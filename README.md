@@ -14,12 +14,12 @@ You need HTTPS hosting for "Add to Home Screen" to give you full offline support
    git add .
    git commit -m "ledger app"
    git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/ledger.git
+   git remote add origin https://github.com/ramin711711/Budget-Manager-For-College.git
    git push -u origin main
    ```
 4. In the repo, go to **Settings → Pages**, set Source to `main` branch, root folder. Save.
 5. Wait ~1 minute, then your app is live at:
-   `https://YOUR_USERNAME.github.io/ledger/`
+   `https://ramin711711.github.io/Budget-Manager-For-College/`
 
 Alternatives that also work and are free: Netlify Drop (netlify.com/drop — drag the folder in, done), Vercel, Cloudflare Pages.
 
