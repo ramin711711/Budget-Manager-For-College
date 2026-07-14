@@ -1,15 +1,214 @@
-{
-  "name": "Daily Ledger — College Budget",
-  "short_name": "Ledger",
-  "description": "Track your daily allowance, weekly spending, and savings.",
-  "start_url": "./index.html",
-  "scope": "./",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0F1B2D",
-  "theme_color": "#0F1B2D",
-  "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ]
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0F1B2D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Daily Ledger</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="view-setup" class="view hidden">
+  <div class="setup-wrap">
+    <div class="stamp-mark">$</div>
+    <h1>Open your ledger</h1>
+    <p class="sub">Tell it what you've got. It'll work out what you can spend per day.</p>
+
+    <label>Total budget (USD)
+      <input type="number" id="in-total" placeholder="1000" inputmode="decimal">
+    </label>
+
+    <label>Start date
+      <input type="date" id="in-start">
+    </label>
+
+    <label>Covers how many months?
+      <input type="number" id="in-months" value="9" min="1" max="24">
+    </label>
+
+    <label>Week starts on
+      <select id="in-weekstart">
+        <option value="1">Monday</option>
+        <option value="0">Sunday</option>
+      </select>
+    </label>
+
+    <button class="btn-primary" id="btn-setup-save">Open ledger</button>
+    <button class="btn-ghost" id="btn-setup-import">Restore from backup file instead</button>
+    <input type="file" id="file-import-setup" accept="application/json" class="hidden-file">
+  </div>
+</div>
+
+<!-- APP -->
+<div id="view-app" class="view hidden">
+
+  <!-- TODAY -->
+  <section id="tab-today" class="tab">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow" id="today-daynum">Day 1 of 270</div>
+        <div class="date-line" id="today-date">—</div>
+      </div>
+    </header>
+
+    <div class="stamp-card">
+      <div class="ring-wrap" id="ring-wrap">
+        <svg class="ring-svg" viewBox="0 0 200 200">
+          <circle class="ring-track" cx="100" cy="100" r="88"></circle>
+          <circle class="ring-progress" id="ring-progress" cx="100" cy="100" r="88"></circle>
+        </svg>
+        <div class="stamp-center">
+          <div class="stamp-amount" id="stamp-remaining">$0.00</div>
+          <div class="stamp-label">left today</div>
+        </div>
+      </div>
+      <div class="stamp-foot" id="stamp-allowance">of $0.00 / day</div>
+    </div>
+
+    <div class="ledger-card">
+      <div class="ledger-row-head">This week</div>
+      <div class="week-grid">
+        <div class="week-cell">
+          <div class="wc-label">Allotted</div>
+          <div class="wc-value" id="week-allotted">$0.00</div>
+        </div>
+        <div class="week-cell">
+          <div class="wc-label">Spent</div>
+          <div class="wc-value rust" id="week-spent">$0.00</div>
+        </div>
+        <div class="week-cell">
+          <div class="wc-label">Income</div>
+          <div class="wc-value sage" id="week-income">$0.00</div>
+        </div>
+        <div class="week-cell">
+          <div class="wc-label">Saved</div>
+          <div class="wc-value sage" id="week-saved">$0.00</div>
+        </div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="week-progress"></div></div>
+      <div class="week-formula" id="week-formula"></div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="btn-primary" id="btn-add-expense">＋ Add expense</button>
+      <button class="btn-secondary" id="btn-add-income">＋ Add income</button>
+    </div>
+
+    <div class="ledger-card">
+      <div class="ledger-row-head">Recent</div>
+      <div id="recent-list" class="tx-list"></div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="tab-history" class="tab hidden">
+    <header class="topbar"><h2>History</h2></header>
+    <div class="filter-row">
+      <select id="hist-filter">
+        <option value="all">All categories</option>
+      </select>
+    </div>
+    <div id="history-list" class="tx-list full"></div>
+  </section>
+
+  <!-- STATS -->
+  <section id="tab-stats" class="tab hidden">
+    <header class="topbar"><h2>Stats</h2></header>
+
+    <div class="ledger-card">
+      <div class="ledger-row-head">Spending by category <span class="sub-range">this month</span></div>
+      <div class="donut-wrap">
+        <div id="donut" class="donut"></div>
+        <div id="donut-legend" class="donut-legend"></div>
+      </div>
+    </div>
+
+    <div class="ledger-card">
+      <div class="ledger-row-head">Weekly trend</div>
+      <svg id="trend-chart" viewBox="0 0 320 160" class="trend-svg"></svg>
+      <div class="trend-legend">
+        <span><i class="dot rust"></i> Spent</span>
+        <span><i class="dot sage"></i> Saved</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" class="tab hidden">
+    <header class="topbar"><h2>Settings</h2></header>
+
+    <div class="ledger-card">
+      <div class="ledger-row-head">Budget</div>
+      <label>Total budget (USD)<input type="number" id="set-total"></label>
+      <label>Start date<input type="date" id="set-start"></label>
+      <label>Covers how many months?<input type="number" id="set-months" min="1" max="24"></label>
+      <label>Week starts on
+        <select id="set-weekstart">
+          <option value="1">Monday</option>
+          <option value="0">Sunday</option>
+        </select>
+      </label>
+      <button class="btn-primary" id="btn-settings-save">Save changes</button>
+    </div>
+
+    <div class="ledger-card">
+      <div class="ledger-row-head">Categories</div>
+      <div id="cat-list" class="cat-list"></div>
+      <div class="add-cat-row">
+        <input type="text" id="new-cat-name" placeholder="New category">
+        <button class="btn-secondary" id="btn-add-cat">Add</button>
+      </div>
+    </div>
+
+    <div class="ledger-card">
+      <div class="ledger-row-head">Backup</div>
+      <p class="sub">Save your data as a file, or bring it back if you switch phones.</p>
+      <button class="btn-primary" id="btn-export">Export backup (JSON)</button>
+      <button class="btn-secondary" id="btn-import">Import backup</button>
+      <input type="file" id="file-import" accept="application/json" class="hidden-file">
+    </div>
+
+    <div class="ledger-card danger">
+      <div class="ledger-row-head">Reset</div>
+      <p class="sub">Erases everything on this device. This can't be undone.</p>
+      <button class="btn-danger" id="btn-reset">Erase all data</button>
+    </div>
+  </section>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-tab="today"><span>Today</span></button>
+    <button class="tab-btn" data-tab="history"><span>History</span></button>
+    <button class="tab-btn" data-tab="stats"><span>Stats</span></button>
+    <button class="tab-btn" data-tab="settings"><span>Settings</span></button>
+  </nav>
+</div>
+
+<!-- MODAL: add transaction -->
+<div id="modal-tx" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-title" id="modal-tx-title">Add expense</div>
+    <label>Amount (USD)<input type="number" id="tx-amount" inputmode="decimal" placeholder="0.00"></label>
+    <label id="tx-cat-wrap">Category
+      <select id="tx-category"></select>
+    </label>
+    <label>Note (optional)<input type="text" id="tx-note" placeholder="e.g. coffee"></label>
+    <label>Date<input type="date" id="tx-date"></label>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="btn-tx-cancel">Cancel</button>
+      <button class="btn-primary" id="btn-tx-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
